@@ -26,6 +26,13 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+
+# 【修复1】添加必要权限，解决 "Resource not accessible by integration" 错误
+permissions:
+  security-events: write
+  contents: read
+  actions: read
+
 jobs:
   appknox:
     runs-on: ubuntu-latest
@@ -48,7 +55,9 @@ jobs:
           sarif: Enable
 
       - name: Upload SARIF to GHAS
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        # 【修复2】仅在非 Fork PR 时上传，避免权限报错导致整个 job 失败
+        # 同时保留 always() 确保即使 Appknox 扫描有发现也能上传结果
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v4                   # 【修复3】从 v3 升级到 v4
         with:
           sarif_file: report.sarif
